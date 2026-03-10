@@ -13,7 +13,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class TaskService {
+public class TaskService  {
 
     private final TaskRepository taskRepository;
     private final ProjectMemberRepository projectMemberRepository;
@@ -26,7 +26,7 @@ public class TaskService {
     }
 
     private void validateMemberAccess(Long projectId, Integer userId) {
-        boolean isMember = projectMemberRepository.existsByProjectIdAndUserId(projectId, Long.valueOf(userId));
+        boolean isMember = projectMemberRepository.existsByProjectIdAndUserId(Math.toIntExact(projectId), Long.valueOf(userId));
         if (!isMember) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,

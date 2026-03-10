@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
+
 
 @Service
 public class ProjectMemberService {
@@ -26,6 +28,10 @@ public class ProjectMemberService {
         this.roleRepository = roleRepository;
     }
 
+    public List<ProjectMember> getMembersByProject(Long projectId) {
+        return projectMemberRepository.findByProjectId(Math.toIntExact(projectId));
+    }
+
     @Transactional
     public ProjectMember addMemberByEmail(Long projectId, String email, String roleName) {
         Project project = projectRepository.findById(projectId)
@@ -34,10 +40,10 @@ public class ProjectMemberService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Utilisateur non trouvé"));
 
-        Role role = roleRepository.findByNom(roleName)
+        Role role = roleRepository.findByLibelle(roleName)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Rôle '" + roleName + "' inexistant en base"));
 
-        if (projectMemberRepository.existsByProjectIdAndUserId(projectId, user.getId())) {
+        if (projectMemberRepository.existsByProjectIdAndUserId(Math.toIntExact(projectId), user.getId())) {
             throw new IllegalStateException("L'utilisateur est déjà membre du projet");
         }
 
