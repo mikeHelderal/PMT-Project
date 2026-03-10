@@ -1,5 +1,6 @@
 package com.exercice.pmt.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -34,6 +35,7 @@ public class Task {
 
     @ManyToOne
     @JoinColumn(name = "projet_id", nullable = false)
+    @JsonIgnore
     private Project project;
 
     @ManyToOne

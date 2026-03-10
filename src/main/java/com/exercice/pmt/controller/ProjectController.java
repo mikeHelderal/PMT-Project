@@ -16,6 +16,10 @@ public class ProjectController {
 
     private final ProjectService projectService;
 
+    /**
+     *
+     * @param userId
+     */
     @GetMapping("user/{userId}")
     public List<Project> getProjecrs(@PathVariable Long userId){
         return projectService.getAllProjectsByUserId(userId);
