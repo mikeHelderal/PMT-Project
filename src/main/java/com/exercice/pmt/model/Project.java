@@ -2,7 +2,12 @@ package com.exercice.pmt.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDateTime;
 
@@ -10,6 +15,9 @@ import java.time.LocalDateTime;
 @Table(name = "projects")
 @Data
 @NoArgsConstructor
+@Getter
+@Setter
+
 public class Project {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,4 +34,13 @@ public class Project {
     @ManyToOne
     @JoinColumn(name = "admin_id", nullable = false)
     private User admin;
+
+    @CreationTimestamp
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
+
+
+
 }
