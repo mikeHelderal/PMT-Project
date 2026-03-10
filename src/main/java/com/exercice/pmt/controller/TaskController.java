@@ -3,7 +3,6 @@ package com.exercice.pmt.controller;
 import com.exercice.pmt.model.Task;
 import com.exercice.pmt.service.TaskService;
 import lombok.RequiredArgsConstructor;
-import org.apache.coyote.Response;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,7 +24,8 @@ public class TaskController {
 
     @PostMapping
     public ResponseEntity<Task> createTask(@RequestBody Task task) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(taskService.saveTask(task));
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(taskService.createTask(task));
     }
 
     @PatchMapping("/{id}/status")
