@@ -1,6 +1,7 @@
 package com.exercice.pmt.model;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -10,6 +11,7 @@ import java.time.LocalDateTime;
 @Table(name = "historique_taches")
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
 public class TaskHistory {
 
     @Id
