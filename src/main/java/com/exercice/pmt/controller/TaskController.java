@@ -4,7 +4,6 @@ import com.exercice.pmt.model.ProjectMember;
 import com.exercice.pmt.model.Task;
 import com.exercice.pmt.model.TaskHistory;
 import com.exercice.pmt.repository.ProjectMemberRepository;
-import com.exercice.pmt.repository.TaskHistoryRepository;
 import com.exercice.pmt.service.TaskHistoryService;
 import com.exercice.pmt.service.TaskService;
 import lombok.RequiredArgsConstructor;
@@ -56,4 +55,11 @@ public class TaskController {
     @GetMapping("/{id}/history")
     public ResponseEntity<List<TaskHistory>> getTaskHistory(@PathVariable Integer id) {
         return ResponseEntity.ok(taskHistoryService.getHistoryByTaskId(id));
-    }}
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Task> deleteTask(@PathVariable Integer id) {
+        taskService.deleteTask(id);
+        return ResponseEntity.noContent().build();
+    }
+}

@@ -1,6 +1,6 @@
 package com.exercice.pmt.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -23,6 +23,7 @@ public class Task {
 
     @ManyToOne
     @JoinColumn(name = "assignee_id")
+    @JsonIgnoreProperties({"projects", "password"})
     private User assignee;
 
     @Column(columnDefinition = "TEXT")
@@ -35,10 +36,11 @@ public class Task {
 
     @ManyToOne
     @JoinColumn(name = "projet_id", nullable = false)
-    @JsonIgnore
+    @JsonIgnoreProperties({"tasks"})
     private Project project;
 
     @ManyToOne
     @JoinColumn(name = "assigne_a_membre_id")
+    @JsonIgnoreProperties({"project"})
     private ProjectMember assignedMember;
 }
