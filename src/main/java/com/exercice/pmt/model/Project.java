@@ -1,5 +1,6 @@
 package com.exercice.pmt.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.Getter;
@@ -7,9 +8,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "projects")
@@ -31,9 +32,13 @@ public class Project {
 
     private LocalDateTime dateDebut;
 
-    @ManyToOne
+    @ManyToOne(optional = false)
     @JoinColumn(name = "admin_id", nullable = false)
+    @JsonIgnoreProperties({"projects"})
     private User admin;
+
+    @OneToMany(mappedBy = "project")
+    private List<Task> tasks;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

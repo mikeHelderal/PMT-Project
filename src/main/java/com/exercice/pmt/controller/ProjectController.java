@@ -1,5 +1,6 @@
 package com.exercice.pmt.controller;
 
+import com.exercice.pmt.DTO.ProjectRequest;
 import com.exercice.pmt.model.Project;
 import com.exercice.pmt.service.ProjectService;
 import lombok.RequiredArgsConstructor;
@@ -16,18 +17,20 @@ public class ProjectController {
 
     private final ProjectService projectService;
 
-    /**
-     *
-     * @param userId
-     */
-    @GetMapping("user/{userId}")
-    public List<Project> getProjecrs(@PathVariable Long userId){
+
+    @GetMapping("/{userId}")
+    public List<Project> getProjects(@PathVariable Long userId){
         return projectService.getAllProjectsByUserId(userId);
     }
 
     @PostMapping
-    public Project create(@RequestBody Project project){
+    public Project create(@RequestBody ProjectRequest project){
         return projectService.saveProject(project);
+    }
+
+    @GetMapping("/project/{id}")
+    public Project getProject(@PathVariable Long id){
+        return projectService.getProjectById(id);
     }
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProject(@PathVariable Long id){

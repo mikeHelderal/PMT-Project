@@ -20,14 +20,14 @@ public class User {
     @Column(name = "id")
     private Long id;
 
-    @Column(unique = true, nullable = true)
+    @Column(unique = true, nullable = false)
     private String email;
 
     @Column(nullable = false)
     private String password;
 
     @Column(nullable = false)
-    private String userName;
+    private String username;
 
     @OneToMany(mappedBy = "admin", cascade = CascadeType.ALL)
     private List<Project> projects;

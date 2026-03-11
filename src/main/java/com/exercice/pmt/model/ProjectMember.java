@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 @Entity
 @Table(name = "membres_projet")
 @Data
@@ -24,4 +26,7 @@ public class ProjectMember {
     @ManyToOne
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
+
+    @Column(name = "date_arrivee", nullable = false)
+    private LocalDate dateArrivee;
 }

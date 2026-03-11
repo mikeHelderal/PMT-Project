@@ -15,7 +15,7 @@ public class AuthController {
 
     @PostMapping("register")
     public User register(@RequestBody User user) {
-        return userService.userInscripton(user);
+        return userService.userInscription(user);
     }
 
     @PostMapping("login")

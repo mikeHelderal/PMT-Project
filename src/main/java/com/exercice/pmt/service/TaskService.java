@@ -3,7 +3,6 @@ package com.exercice.pmt.service;
 import com.exercice.pmt.model.Task;
 import com.exercice.pmt.repository.ProjectMemberRepository;
 import com.exercice.pmt.repository.TaskRepository;
-import io.micrometer.observation.Observation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -11,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Observable;
 
 @Service
 @RequiredArgsConstructor
@@ -22,7 +20,12 @@ public class TaskService  {
 
     @Transactional
     public Task createTask(Task task) {
-        validateMemberAccess(Long.valueOf(task.getProject().getId()), task.getAssignedMember().getId());
+        if (task.getAssignedMember() != null) {
+            validateMemberAccess(
+                    Long.valueOf(task.getProject().getId()),
+                    task.getAssignedMember().getId()
+            );
+        }
 
         return taskRepository.save(task);
     }
@@ -67,6 +70,10 @@ public class TaskService  {
         }
 
         return taskRepository.save(task);
+    }
+
+    public void deleteTask(Integer id){
+        taskRepository.deleteById(id);
     }
 
 }

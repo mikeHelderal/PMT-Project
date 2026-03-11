@@ -4,6 +4,7 @@ import com.exercice.pmt.model.ProjectMember;
 import com.exercice.pmt.model.Role;
 import com.exercice.pmt.service.ProjectMemberService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,11 +14,13 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/members")
-@RequiredArgsConstructor
 @CrossOrigin(origins = "http://localhost:4200")
+@RequiredArgsConstructor
 public class ProjectMemberController {
 
+    @Autowired
     private final ProjectMemberService memberService;
+
 
 
     @GetMapping("/project/{projectId}")
@@ -25,11 +28,12 @@ public class ProjectMemberController {
         return ResponseEntity.ok(memberService.getMembersByProject(projectId));
     }
 
-    @PostMapping("/project/{projectId}/invite")
+
+    @PostMapping("addMember/{projectId}")
     public ResponseEntity<ProjectMember> inviteMember(
             @PathVariable Long projectId,
-            @RequestBody Map<String, String> request) {
-
+            @RequestBody Map<String, String> request)
+    {
         String email = request.get("email");
         String roleName = request.get("roleName");
 
