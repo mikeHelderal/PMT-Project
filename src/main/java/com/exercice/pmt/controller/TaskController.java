@@ -1,5 +1,6 @@
 package com.exercice.pmt.controller;
 
+import com.exercice.pmt.DTO.AssignTaskRequest;
 import com.exercice.pmt.model.ProjectMember;
 import com.exercice.pmt.model.Task;
 import com.exercice.pmt.model.TaskHistory;
@@ -30,6 +31,10 @@ public class TaskController {
 
     @PostMapping
     public ResponseEntity<Task> createTask(@RequestBody Task task) {
+        System.out.println("hhh/////////////////////////////////////////////////////////////////////////////////////////" +
+                task.getProject() +
+                "/////////////////////////////////////////////////////////////////////////:");
+
 
         return ResponseEntity.status(HttpStatus.CREATED).body(taskService.createTask(task));
     }
@@ -43,12 +48,31 @@ public class TaskController {
         return ResponseEntity.ok(taskService.updateStatus(id, status));
     }
 
+    @PatchMapping("/{id}/assign")
+    public ResponseEntity<Task> assignTask(
+            @PathVariable Integer id,
+            @RequestBody AssignTaskRequest request
+    ) {
+        Task updatedTask = taskService.assignTaskToMember(
+                id,
+                request.getProjectId(),
+                request.getMemberId()
+        );
+
+        return ResponseEntity.ok(updatedTask);
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<Task> updateTask(@PathVariable Integer id, @RequestBody Task taskDetails,@RequestHeader("X-Member-ID") Long memberId) {
         Task updatedTask = taskService.updateTask(id, taskDetails);
         ProjectMember currentMember = projectMemberRepository.findById(memberId)
                 .orElseThrow(() -> new RuntimeException("Membre non trouvé"));
-         taskHistoryService.logAction(updatedTask, currentMember, "Mise à jour des détails de la tâche");
+
+        // 2. On récupère le membre pour l'historique
+
+        // 3. On logue l'action
+        taskHistoryService.logAction(updatedTask, currentMember, "Mise à jour de la tâche : " + id);
+
         return ResponseEntity.ok(updatedTask);
     }
 
