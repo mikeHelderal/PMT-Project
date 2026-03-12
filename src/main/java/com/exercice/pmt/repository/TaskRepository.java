@@ -8,6 +8,10 @@ import java.util.List;
 
 @Repository
 public interface TaskRepository extends JpaRepository<Task,Integer> {
+
     List<Task> findByProjectId(Integer projectId);
+
+    List<Task> findByProjectIdOrderByIdAsc(Integer projectId);
+
 
 }
