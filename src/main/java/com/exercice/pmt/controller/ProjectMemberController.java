@@ -1,0 +1,58 @@
+package com.exercice.pmt.controller;
+
+import com.exercice.pmt.DTO.ProjectMemberResponse;
+import com.exercice.pmt.model.ProjectMember;
+import com.exercice.pmt.model.Role;
+import com.exercice.pmt.service.ProjectMemberService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/members")
+@CrossOrigin(origins = "http://localhost:4200")
+@RequiredArgsConstructor
+public class ProjectMemberController {
+
+    @Autowired
+    private final ProjectMemberService memberService;
+
+
+
+    @GetMapping("/project/{projectId}")
+    public ResponseEntity<List<ProjectMemberResponse>> getMembers(@PathVariable Integer projectId) {
+        return ResponseEntity.ok(memberService.getMembersByProject(projectId));
+    }
+
+
+    @PostMapping("addMember/{projectId}")
+    public ResponseEntity<ProjectMember> inviteMember(
+            @PathVariable Long projectId,
+            @RequestBody Map<String, String> request,
+            @RequestHeader("X-Member-ID") Long requesterId
+            )
+
+    {
+        String email = request.get("email");
+        String roleName = request.get("roleName");
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(memberService.addMemberByEmail(projectId, email, roleName, requesterId));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ProjectMember> updateRole(@PathVariable Long id, @RequestBody Role newRole) {
+        return ResponseEntity.ok(memberService.updateMemberRole(id, newRole));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> removeMember(@PathVariable Long id, @RequestHeader("X-Member-ID") Long requesterId) {
+        memberService.removeMember(id,requesterId);
+        return ResponseEntity.noContent().build();
+    }
+}

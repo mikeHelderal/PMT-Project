@@ -11,10 +11,12 @@ public class UserService {
     @Autowired
     private UserRepository userRepository;
 
-    public User userInscripton(User user){
+    public User userInscription(User user){
+        System.out.println("userInscription => "+ user);
         if(userRepository.findByEmail(user.getEmail()).isPresent()){
             throw new RuntimeException("User with email already exists");
         }
+
 
         return userRepository.save(user);
     }
