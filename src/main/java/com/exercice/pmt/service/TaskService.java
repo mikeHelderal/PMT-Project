@@ -13,7 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -24,7 +26,15 @@ public class TaskService  {
     private final ProjectMemberRepository projectMemberRepository;
 
     @Transactional
-    public Task createTask(Task task) {
+    public Task createTask(Task task, Long requesterMemberId) {
+
+        ProjectMember requester = projectMemberRepository.findById(requesterMemberId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Le membre n'a pas été trouvé"));
+
+        if (!"ADMIN".equalsIgnoreCase(requester.getRole().getLibelle())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Seul l'administrateur peut créer des tâches");
+        }
+
          if (task.getProject() == null || task.getProject().getId() == null) {
             throw new IllegalArgumentException("La tâche doit être rattachée à un projet existant.");
         }
@@ -39,6 +49,10 @@ public class TaskService  {
                     Long.valueOf(project.getId()),
                     task.getAssignedMember().getId()
             );
+        }
+
+        if (task.getStatus() == null) {
+            task.setStatus("A_FAIRE");
         }
 
         return taskRepository.save(task);
@@ -63,6 +77,14 @@ public class TaskService  {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tâche non trouvée"));
         task.setStatus(newStatus);
+
+        if("TERMINE".equalsIgnoreCase(newStatus)) {
+            task.setDateFinReelle(LocalDate.now());
+        }else{
+            task.setDateFinReelle(null);
+        }
+
+
         return taskRepository.save(task);
     }
 
@@ -76,23 +98,25 @@ public class TaskService  {
             task.setAssignedMember(taskDetails.getAssignedMember());
         }
 
-        if (taskDetails.getNom() != null) {
-            task.setNom(taskDetails.getNom());
-        }
-        if (taskDetails.getDescription() != null) {
-            task.setDescription(taskDetails.getDescription());
-        }
+        Optional.ofNullable(taskDetails.getNom()).ifPresent(task::setNom);
+        Optional.ofNullable(taskDetails.getDescription()).ifPresent(task::setDescription);
+        Optional.ofNullable(taskDetails.getPriorite()).ifPresent(task::setPriorite);
 
-        if (taskDetails.getPriorite() != null) {
-            task.setPriorite(taskDetails.getPriorite());
-        }
         if (taskDetails.getStatus() != null) {
-            task.setStatus(taskDetails.getStatus());
-        }
+            String oldStatus = task.getStatus();
+            String newStatus = taskDetails.getStatus();
 
+            if (!newStatus.equals(oldStatus)) {
+                task.setStatus(newStatus);
+                if ("TERMINE".equalsIgnoreCase(newStatus)) {
+                    task.setDateFinReelle(LocalDate.now());
+                } else {
+                    task.setDateFinReelle(null); // Réinitialisation si la tâche est réouverte
+                }
+            }
+        }
         return taskRepository.save(task);
     }
-
 
     @Transactional
     public Task assignTaskToMember(Integer taskId, Integer projectID, Integer memberId){
@@ -118,11 +142,21 @@ public class TaskService  {
         return taskRepository.save(task);
 
     }
+    @Transactional
+    public void deleteTask(Integer id, Long requesterMemberId) {
+        ProjectMember requester = projectMemberRepository.findById(requesterMemberId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membre  non trouvé"));
 
-    public void deleteTask(Integer id){
+        if (!"ADMIN".equalsIgnoreCase(requester.getRole().getLibelle())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Action refusée : Seul l'administrateur peut supprimer une tâche");
+        }
+
+        if (!taskRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "La tâche avec l'ID " + id + " n'existe pas");
+        }
+
         taskRepository.deleteById(id);
     }
-
 }
 
 

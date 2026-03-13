@@ -33,13 +33,16 @@ public class ProjectMemberController {
     @PostMapping("addMember/{projectId}")
     public ResponseEntity<ProjectMember> inviteMember(
             @PathVariable Long projectId,
-            @RequestBody Map<String, String> request)
+            @RequestBody Map<String, String> request,
+            @RequestHeader("X-Member-ID") Long requesterId
+            )
+
     {
         String email = request.get("email");
         String roleName = request.get("roleName");
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(memberService.addMemberByEmail(projectId, email, roleName));
+                .body(memberService.addMemberByEmail(projectId, email, roleName, requesterId));
     }
 
     @PutMapping("/{id}")
@@ -48,8 +51,8 @@ public class ProjectMemberController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> removeMember(@PathVariable Long id) {
-        memberService.removeMember(id);
+    public ResponseEntity<Void> removeMember(@PathVariable Long id, @RequestHeader("X-Member-ID") Long requesterId) {
+        memberService.removeMember(id,requesterId);
         return ResponseEntity.noContent().build();
     }
 }

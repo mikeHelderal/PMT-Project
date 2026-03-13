@@ -36,7 +36,17 @@ public class ProjectMemberService {
     }
 
     @Transactional
-    public ProjectMember addMemberByEmail(Long projectId, String email, String roleName) {
+    public ProjectMember addMemberByEmail(Long projectId, String email, String roleName, Long memberId) {
+
+        ProjectMember requesterMember = projectMemberRepository.findById(memberId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Membre non trouvé"));
+
+        if(!"ADMIN".equalsIgnoreCase(requesterMember.getRole().getLibelle())){
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Seul l'admin peut ajouter un membre");
+        }
+
+
+
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Projet non trouvé"));
 
@@ -60,7 +70,14 @@ public class ProjectMemberService {
     }
 
     @Transactional
-    public void removeMember(Long memberId) {
+    public void removeMember(Long memberId, Long requesterMemberID) {
+
+        ProjectMember requesterMember = projectMemberRepository.findById(requesterMemberID)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Membre non trouvé"));
+
+        if(!"ADMIN".equalsIgnoreCase(requesterMember.getRole().getLibelle())){
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Seul l'admin peut ajouter un membre");
+        }
         if (!projectMemberRepository.existsById(memberId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Membre non trouvé");
         }

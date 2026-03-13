@@ -33,13 +33,8 @@ public class TaskController {
     }
 
     @PostMapping
-    public ResponseEntity<Task> createTask(@RequestBody Task task) {
-        System.out.println("hhh/////////////////////////////////////////////////////////////////////////////////////////" +
-                task.getProject() +
-                "/////////////////////////////////////////////////////////////////////////:");
-
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(taskService.createTask(task));
+    public ResponseEntity<Task> createTask(@RequestBody Task task, @RequestHeader("X-Member-ID") Long memberId) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(taskService.createTask(task, memberId));
     }
 
     @PatchMapping("/{id}/status")
@@ -50,12 +45,10 @@ public class TaskController {
                 .orElseThrow(() -> new RuntimeException("Membre non trouvé"));
 
         taskHistoryService.logAction(updatedTask, currentMember, "Changement de statut : " + status);
-
         if(updatedTask.getAssignedMember() != null && updatedTask.getAssignedMember().getUser().getEmail() != null) {
             String emailDestinataire = updatedTask.getAssignedMember().getUser().getEmail();
             String nomTache = updatedTask.getNom();
             String auteurNom = currentMember.getUser().getUsername();
-
             notificationService.sendTaskUpdateEmail(
                     emailDestinataire,
                     nomTache,
@@ -63,8 +56,6 @@ public class TaskController {
                     auteurNom
             );
         }
-
-
         return ResponseEntity.ok(updatedTask);
     }
 
@@ -85,12 +76,10 @@ public class TaskController {
     @PutMapping("/{id}")
     public ResponseEntity<Task> updateTask(@PathVariable Integer id, @RequestBody Task taskDetails,@RequestHeader("X-Member-ID") Long memberId) {
         Task updatedTask = taskService.updateTask(id, taskDetails);
+
         ProjectMember currentMember = projectMemberRepository.findById(memberId)
                 .orElseThrow(() -> new RuntimeException("Membre non trouvé"));
 
-        // 2. On récupère le membre pour l'historique
-
-        // 3. On logue l'action
         taskHistoryService.logAction(updatedTask, currentMember, "Mise à jour de la tâche : " + id);
 
         return ResponseEntity.ok(updatedTask);
@@ -102,8 +91,8 @@ public class TaskController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Task> deleteTask(@PathVariable Integer id) {
-        taskService.deleteTask(id);
+    public ResponseEntity<Task> deleteTask(@PathVariable Integer id,@RequestHeader("X-Member-ID") Long memberId) {
+        taskService.deleteTask(id,memberId);
         return ResponseEntity.noContent().build();
     }
 }

@@ -32,9 +32,13 @@ public class ProjectController {
     public Project getProject(@PathVariable Long id){
         return projectService.getProjectById(id);
     }
+
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProject(@PathVariable Long id){
-        projectService.deleteProject(id);
+    public ResponseEntity<Void> deleteProject(
+            @PathVariable Long id,
+            @RequestHeader("X-Member-ID") Long requesterId) { // Ajout du header de sécurité
+
+        projectService.deleteProject(id, requesterId);
         return ResponseEntity.noContent().build();
     }
 

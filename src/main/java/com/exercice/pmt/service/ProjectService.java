@@ -10,7 +10,10 @@ import com.exercice.pmt.repository.ProjectRepository;
 import com.exercice.pmt.repository.RoleRepository;
 import com.exercice.pmt.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -59,7 +62,13 @@ public class ProjectService {
 
     }
 
-    public void deleteProject(Long id){
+    @Transactional
+    public void deleteProject(Long id, Long requesterId) {
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (!project.getAdmin().getId().equals(requesterId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Non autorisé");
+        }
         projectRepository.deleteById(id);
     }
 
