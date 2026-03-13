@@ -1,5 +1,6 @@
 package com.exercice.pmt.service;
 
+import com.exercice.pmt.DTO.ProjectMemberResponse;
 import com.exercice.pmt.model.*;
 import com.exercice.pmt.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -20,8 +21,18 @@ public class ProjectMemberService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
-    public List<ProjectMember> getMembersByProject(Integer projectId) {
-        return projectMemberRepository.findByProjectId(projectId);
+    public List<ProjectMemberResponse> getMembersByProject(Integer projectId) {
+        return projectMemberRepository.findByProjectId(projectId)
+                .stream()
+                .map(member -> new ProjectMemberResponse(
+                        member.getId(),
+                        member.getUser().getId(),
+                        member.getUser().getUsername(),
+                        member.getUser().getEmail(),
+                        member.getRole().getLibelle(),
+                        member.getDateArrivee()
+                ))
+                .toList();
     }
 
     @Transactional

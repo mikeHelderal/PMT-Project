@@ -1,5 +1,6 @@
 package com.exercice.pmt.controller;
 
+import com.exercice.pmt.DTO.ProjectMemberResponse;
 import com.exercice.pmt.model.ProjectMember;
 import com.exercice.pmt.model.Role;
 import com.exercice.pmt.service.ProjectMemberService;
@@ -24,7 +25,7 @@ public class ProjectMemberController {
 
 
     @GetMapping("/project/{projectId}")
-    public ResponseEntity<List<ProjectMember>> getMembers(@PathVariable Integer projectId) {
+    public ResponseEntity<List<ProjectMemberResponse>> getMembers(@PathVariable Integer projectId) {
         return ResponseEntity.ok(memberService.getMembersByProject(projectId));
     }
 
