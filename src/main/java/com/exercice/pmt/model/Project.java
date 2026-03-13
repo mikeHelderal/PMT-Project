@@ -40,6 +40,10 @@ public class Project {
     @OneToMany(mappedBy = "project")
     private List<Task> tasks;
 
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL)
+    @JsonIgnoreProperties("project")
+    private List<ProjectMember> membres;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 
