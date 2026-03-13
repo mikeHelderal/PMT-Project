@@ -5,6 +5,7 @@ import com.exercice.pmt.model.ProjectMember;
 import com.exercice.pmt.model.Task;
 import com.exercice.pmt.model.TaskHistory;
 import com.exercice.pmt.repository.ProjectMemberRepository;
+import com.exercice.pmt.service.NotificationService;
 import com.exercice.pmt.service.TaskHistoryService;
 import com.exercice.pmt.service.TaskService;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,8 @@ public class TaskController {
     private final TaskHistoryService taskHistoryService;
     private final ProjectMemberRepository projectMemberRepository;
 
+    private final NotificationService notificationService;
+
     @GetMapping("/project/{projectId}")
     public ResponseEntity<List<Task>> getByProjectId(@PathVariable Integer projectId) {
         return ResponseEntity.ok(taskService.getTasksByProjectId(projectId));
@@ -42,10 +45,27 @@ public class TaskController {
     @PatchMapping("/{id}/status")
     public ResponseEntity<Task> updateStatus(@PathVariable Integer id, @RequestBody String status,@RequestHeader("X-Member-ID") Long memberId) {
         Task updatedTask = taskService.updateStatus(id, status);
+
         ProjectMember currentMember = projectMemberRepository.findById(memberId)
                 .orElseThrow(() -> new RuntimeException("Membre non trouvé"));
+
         taskHistoryService.logAction(updatedTask, currentMember, "Changement de statut : " + status);
-        return ResponseEntity.ok(taskService.updateStatus(id, status));
+
+        if(updatedTask.getAssignedMember() != null && updatedTask.getAssignedMember().getUser().getEmail() != null) {
+            String emailDestinataire = updatedTask.getAssignedMember().getUser().getEmail();
+            String nomTache = updatedTask.getNom();
+            String auteurNom = currentMember.getUser().getUsername();
+
+            notificationService.sendTaskUpdateEmail(
+                    emailDestinataire,
+                    nomTache,
+                    " le statut a été modifié",
+                    auteurNom
+            );
+        }
+
+
+        return ResponseEntity.ok(updatedTask);
     }
 
     @PatchMapping("/{id}/assign")
