@@ -12,7 +12,11 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.util.List;
 
-
+/**
+ * Service gérant les membres et les habilitations au sein des projets.
+ * Ce service implémente les règles métier liées à la collaboration :
+ * vérification des droits d'administration, unicité des membres et gestion des rôles.
+ */
 @Service
 @RequiredArgsConstructor
 public class ProjectMemberService {
@@ -21,6 +25,12 @@ public class ProjectMemberService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+
+    /**
+     * Récupère la liste des membres d'un projet formatée pour la vue (DTO).
+     * * @param projectId Identifiant du projet
+     * @return Liste de ProjectMemberResponse contenant les informations essentielles des membres
+     */
     public List<ProjectMemberResponse> getMembersByProject(Integer projectId) {
         return projectMemberRepository.findByProjectId(projectId)
                 .stream()
@@ -35,6 +45,18 @@ public class ProjectMemberService {
                 .toList();
     }
 
+    /**
+     * Ajoute un membre à un projet via son adresse email.
+     * Cette opération est transactionnelle et vérifie les droits de l'appelant.
+     * * @param projectId Identifiant du projet cible
+     * * @param email Email de l'utilisateur à inviter
+     * * @param roleName Nom du rôle à attribuer (ex: ADMIN, MEMBER)
+     * * @param memberId ID du membre effectuant l'ajout (doit être ADMIN)
+     * @return Le nouveau ProjectMember enregistré
+     * * @throws ResponseStatusException 403 si l'appelant n'est pas ADMIN
+     * * @throws ResponseStatusException 404 si le projet, l'utilisateur ou le rôle n'existe pas
+     * * @throws ResponseStatusException 409 si l'utilisateur est déjà présent dans le projet
+     */
     @Transactional
     public ProjectMember addMemberByEmail(Long projectId, String email, String roleName, Long memberId) {
 
@@ -69,6 +91,12 @@ public class ProjectMemberService {
         return projectMemberRepository.save(member);
     }
 
+    /**
+     * Supprime un membre d'un projet.
+     * * @param memberId Identifiant de la relation membre à supprimer
+     * * @param requesterMemberID ID de l'appelant (doit être ADMIN)
+     * * @throws ResponseStatusException 403 si l'appelant n'a pas les droits
+     */
     @Transactional
     public void removeMember(Long memberId, Long requesterMemberID) {
 
@@ -84,6 +112,12 @@ public class ProjectMemberService {
         projectMemberRepository.deleteById(memberId);
     }
 
+    /**
+     * Modifie le rôle d'un membre.
+     * *@param id Identifiant de la relation membre
+     * *@param newRole Nouvel objet Role à affecter
+     * @return Le membre mis à jour
+     */
     @Transactional
     public ProjectMember updateMemberRole(Long id, Role newRole) {
         ProjectMember member = projectMemberRepository.findById(id)

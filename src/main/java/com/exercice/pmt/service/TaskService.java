@@ -17,6 +17,11 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Service orchestrant la logique métier des tâches.
+ * Gère le cycle de vie complet d'une tâche : création sécurisée, assignation
+ * avec contrôle d'accès, mise à jour des statuts et historisation temporelle.
+ */
 @Service
 @RequiredArgsConstructor
 public class TaskService  {
@@ -25,6 +30,15 @@ public class TaskService  {
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
 
+    /**
+     * Crée une nouvelle tâche au sein d'un projet.
+     * Vérifie que le demandeur possède les droits d'administration sur le projet.
+     * * @param task L'entité tâche à enregistrer
+     * * @param requesterMemberId ID du membre effectuant la requête
+     * @return La tâche créée et persistée
+     * * @throws ResponseStatusException 403 si l'utilisateur n'est pas ADMIN
+     * * @throws ResponseStatusException 404 si le membre ou le projet est introuvable
+     */
     @Transactional
     public Task createTask(Task task, Long requesterMemberId) {
 
@@ -58,6 +72,12 @@ public class TaskService  {
         return taskRepository.save(task);
     }
 
+    /**
+     * Valide qu'un utilisateur appartient bien à l'équipe d'un projet spécifique.
+     * * @param projectId ID du projet
+     * * @param userId ID de l'utilisateur à vérifier
+     * @throws ResponseStatusException 400 si l'utilisateur n'est pas membre du projet
+     */
     private void validateMemberAccess(Long projectId, Integer userId) {
         boolean isMember = projectMemberRepository.existsByProjectIdAndUserId(Math.toIntExact(projectId), Long.valueOf(userId));
         if (!isMember) {
@@ -68,11 +88,23 @@ public class TaskService  {
         }
     }
 
+    /**
+     * Récupère la liste des tâches d'un projet ordonnées par identifiant.
+     * * @param projectId ID du projet
+     * @return Liste des tâches
+     */
     public List<Task> getTasksByProjectId(Integer projectId){
         return taskRepository.findByProjectIdOrderByIdAsc(projectId);
     }
 
 
+    /**
+     * Met à jour uniquement le statut d'une tâche.
+     * Gère automatiquement la date de fin réelle si le statut passe à "TERMINE".
+     * @param id ID de la tâche
+     * @param newStatus Nouveau libellé du statut
+     * @return La tâche mise à jour
+     */
     public Task updateStatus(Integer id, String newStatus){
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tâche non trouvée"));
@@ -88,6 +120,12 @@ public class TaskService  {
         return taskRepository.save(task);
     }
 
+    /**
+     * Met à jour les détails d'une tâche de façon partielle.
+     * * @param id ID de la tâche à modifier
+     * * @param taskDetails Objet contenant les nouveaux champs
+     * @return La tâche mise à jour
+     */
     @Transactional
     public Task updateTask(Integer id, Task taskDetails) {
         Task task = taskRepository.findById(id)
@@ -118,6 +156,14 @@ public class TaskService  {
         return taskRepository.save(task);
     }
 
+    /**
+     * Assigne une tâche à un membre spécifique après vérification de cohérence.
+     * * @param taskId ID de la tâche
+     * * @param projectID ID du projet (pour vérification)
+     * * @param memberId ID du membre cible
+     * @return La tâche mise à jour avec son nouvel attributaire
+     * * @throws ResponseStatusException 400 si incohérence entre tâche, membre et projet
+     */
     @Transactional
     public Task assignTaskToMember(Integer taskId, Integer projectID, Integer memberId){
         Task task = taskRepository.findById(taskId)
@@ -142,6 +188,15 @@ public class TaskService  {
         return taskRepository.save(task);
 
     }
+
+
+    /**
+     * Supprime une tâche du système.
+     * Seul un administrateur du projet est autorisé à effectuer cette action.
+     * * @param id ID de la tâche
+     * * @param requesterMemberId ID du demandeur
+     * * @throws ResponseStatusException 403 si droits insuffisants
+     */
     @Transactional
     public void deleteTask(Integer id, Long requesterMemberId) {
         ProjectMember requester = projectMemberRepository.findById(requesterMemberId)

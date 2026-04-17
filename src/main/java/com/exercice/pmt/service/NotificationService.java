@@ -6,12 +6,25 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+/**
+ * Service de communication chargé de l'envoi des notifications.
+ * Ce service utilise JavaMailSender pour expédier des alertes par courriel
+ * de manière asynchrone afin de ne pas bloquer le thread principal de l'application.
+ */
 @Service
 public class NotificationService {
 
     @Autowired
     private JavaMailSender mailSender ;
 
+    /**
+     * Envoie un email de notification suite à la mise à jour d'une tâche.
+     * Cette méthode est exécutée de façon asynchrone.
+     * * @param to Adresse email du destinataire (généralement le membre assigné)
+     * * @param taskName Nom de la tâche concernée
+     * * @param action Description de la modification effectuée
+     * * @param changedBy Nom de l'utilisateur ayant réalisé l'action
+     */
     @Async
     public void sendTaskUpdateEmail(String to, String taskName, String action, String changedBy) {
         try {

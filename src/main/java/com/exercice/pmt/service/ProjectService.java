@@ -18,6 +18,11 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * Service gérant la logique métier relative aux projets.
+ * Assure la création des projets, la gestion de leur cycle de vie et
+ * l'attribution automatique des rôles d'administration aux créateurs.
+ */
 @Service
 @RequiredArgsConstructor
 public class ProjectService {
@@ -28,10 +33,22 @@ public class ProjectService {
     private final ProjectMemberRepository projectMemberRepository;
 
 
+    /**
+     * Récupère la liste de tous les projets dont l'utilisateur est l'administrateur.
+     * * @param userId Identifiant de l'utilisateur
+     * @return Liste des projets administrés par l'utilisateur
+     */
     public List<Project> getAllProjectsByUserId(Long userId) {
         return projectRepository.findByAdminId(userId);
     }
 
+    /**
+     * Crée un nouveau projet et définit l'utilisateur créateur comme ADMIN du projet.
+     * Cette méthode orchestre la création de l'entité Project et de l'entité ProjectMember.
+     * * @param project DTO contenant les informations du projet et l'ID de l'administrateur
+     * @return Le projet nouvellement créé
+     * * @throws RuntimeException si l'utilisateur ou le rôle ADMIN est introuvable en base
+     */
     public Project saveProject(ProjectRequest project) {
         User admin = userRepository.findById(project.getAdminId())
                 .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
@@ -41,9 +58,6 @@ public class ProjectService {
         newProject.setDescription(project.getDescription());
         newProject.setDateDebut(project.getDateDebut());
         newProject.setAdmin(admin);
-
-
-
         Project savedProject =  projectRepository.save(newProject);
 
         Role adminRole = roleRepository.findByLibelle("ADMIN")
@@ -54,14 +68,20 @@ public class ProjectService {
         projectMember.setUser(admin);
         projectMember.setRole(adminRole);
         projectMember.setDateArrivee(LocalDate.now());
-
         projectMemberRepository.save(projectMember);
-
         return savedProject;
 
 
     }
 
+    /**
+     * Supprime un projet après vérification que le demandeur est bien l'administrateur.
+     * L'annotation @Transactional garantit que la suppression est atomique.
+     * @param id Identifiant du projet à supprimer
+     * @param requesterId Identifiant de l'utilisateur demandant la suppression
+     * @throws ResponseStatusException 404 si le projet n'existe pas
+     * @throws ResponseStatusException 403 si l'utilisateur n'est pas l'administrateur du projet
+     */
     @Transactional
     public void deleteProject(Long id, Long requesterId) {
         Project project = projectRepository.findById(id)
@@ -72,6 +92,12 @@ public class ProjectService {
         projectRepository.deleteById(id);
     }
 
+    /**
+     * Récupère les informations détaillées d'un projet par son ID.
+     * * @param id Identifiant du projet
+     * @return L'entité Project
+     * * @throws RuntimeException si le projet est introuvable
+     */
     public Project getProjectById(Long id){
         return projectRepository.findById(id).orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
     }
