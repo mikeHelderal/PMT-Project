@@ -9,6 +9,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
 
@@ -55,13 +57,15 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("userInscription() - échec : email déjà existant")
-    void userInscription_emailAlreadyExists_throwsRuntimeException() {
+    @DisplayName("userInscription() - échec : email déjà existant (409 CONFLICT)")
+    void userInscription_emailAlreadyExists_throwsConflict() {
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
 
         assertThatThrownBy(() -> userService.userInscription(user))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("User with email already exists");
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Un compte existe déjà avec cette adresse e-mail")
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
 
         verify(userRepository, never()).save(any());
     }
@@ -82,22 +86,26 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("login() - échec : email introuvable")
-    void login_emailNotFound_throwsRuntimeException() {
+    @DisplayName("login() - échec : email introuvable (401 UNAUTHORIZED)")
+    void login_emailNotFound_throwsUnauthorized() {
         when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.login("unknown@example.com", "password123"))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("Identifiants invalides");
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Identifiants invalides")
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test
-    @DisplayName("login() - échec : mot de passe incorrect")
-    void login_wrongPassword_throwsRuntimeException() {
+    @DisplayName("login() - échec : mot de passe incorrect (401 UNAUTHORIZED)")
+    void login_wrongPassword_throwsUnauthorized() {
         when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(user));
 
         assertThatThrownBy(() -> userService.login("john@example.com", "wrongPassword"))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("Identifiants invalides");
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Identifiants invalides")
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 }

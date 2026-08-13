@@ -28,12 +28,7 @@ public class TaskService  {
     @Transactional
     public Task createTask(Task task, Long requesterMemberId) {
 
-        ProjectMember requester = projectMemberRepository.findById(requesterMemberId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Le membre n'a pas été trouvé"));
-
-        if (!"ADMIN".equalsIgnoreCase(requester.getRole().getLibelle())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Seul l'administrateur peut créer des tâches");
-        }
+        assertCanWrite(requesterMemberId, "créer des tâches");
 
          if (task.getProject() == null || task.getProject().getId() == null) {
             throw new IllegalArgumentException("La tâche doit être rattachée à un projet existant.");
@@ -58,6 +53,31 @@ public class TaskService  {
         return taskRepository.save(task);
     }
 
+    /**
+     * Vérifie que le membre à l'origine de la requête a le droit d'écrire sur les tâches.
+     * <p>
+     * Conformément au tableau des permissions, un ADMIN et un MEMBER peuvent créer,
+     * assigner et mettre à jour une tâche ; un GUEST (observateur) est en lecture seule.
+     *
+     * @param requesterMemberId identifiant `membres_projet` de l'appelant (en-tête X-Member-ID)
+     * @param action            libellé de l'action, repris dans le message d'erreur
+     * @return le membre résolu, pour réutilisation par l'appelant
+     * @throws ResponseStatusException 404 si le membre est inconnu, 403 s'il est observateur
+     */
+    private ProjectMember assertCanWrite(Long requesterMemberId, String action) {
+        ProjectMember requester = projectMemberRepository.findById(requesterMemberId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Le membre n'a pas été trouvé"));
+
+        String role = requester.getRole().getLibelle();
+        if (!"ADMIN".equalsIgnoreCase(role) && !"MEMBER".equalsIgnoreCase(role)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Action refusée : un observateur ne peut pas " + action
+            );
+        }
+        return requester;
+    }
+
     private void validateMemberAccess(Long projectId, Integer userId) {
         boolean isMember = projectMemberRepository.existsByProjectIdAndUserId(Math.toIntExact(projectId), Long.valueOf(userId));
         if (!isMember) {
@@ -73,7 +93,9 @@ public class TaskService  {
     }
 
 
-    public Task updateStatus(Integer id, String newStatus){
+    public Task updateStatus(Integer id, String newStatus, Long requesterMemberId){
+        assertCanWrite(requesterMemberId, "modifier le statut d'une tâche");
+
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tâche non trouvée"));
         task.setStatus(newStatus);
@@ -89,7 +111,9 @@ public class TaskService  {
     }
 
     @Transactional
-    public Task updateTask(Integer id, Task taskDetails) {
+    public Task updateTask(Integer id, Task taskDetails, Long requesterMemberId) {
+        assertCanWrite(requesterMemberId, "mettre à jour une tâche");
+
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tâche non trouvée"));
 
@@ -119,7 +143,9 @@ public class TaskService  {
     }
 
     @Transactional
-    public Task assignTaskToMember(Integer taskId, Integer projectID, Integer memberId){
+    public Task assignTaskToMember(Integer taskId, Integer projectID, Integer memberId, Long requesterMemberId){
+        assertCanWrite(requesterMemberId, "assigner une tâche");
+
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tâche non trouvé"));
         if( !task.getProject().getId().equals(projectID)){

@@ -147,7 +147,7 @@ class TaskControllerTest {
         taskAvecMembre.setAssignedMember(member);
 
         // any() car Spring désérialise "EN_COURS" (sans guillemets) depuis le JSON
-        when(taskService.updateStatus(eq(100), any())).thenReturn(taskAvecMembre);
+        when(taskService.updateStatus(eq(100), any(), eq(1L))).thenReturn(taskAvecMembre);
         when(projectMemberRepository.findById(1L)).thenReturn(Optional.of(member));
         doNothing().when(taskHistoryService).logAction(any(), any(), any());
         doNothing().when(notificationService).sendTaskUpdateEmail(any(), any(), any(), any());
@@ -169,7 +169,7 @@ class TaskControllerTest {
     void updateStatus_noAssignedMember_noNotification() throws Exception {
         task.setAssignedMember(null);
         // any() car Spring désérialise le JSON body sans les guillemets
-        when(taskService.updateStatus(eq(100), any())).thenReturn(task);
+        when(taskService.updateStatus(eq(100), any(), eq(1L))).thenReturn(task);
         when(projectMemberRepository.findById(1L)).thenReturn(Optional.of(member));
 
         mockMvc.perform(patch("/api/tasks/100/status")
@@ -186,7 +186,7 @@ class TaskControllerTest {
     void updateStatus_memberFound_noAssignee_logsHistory() throws Exception {
         task.setAssignedMember(null);
         // any() car Spring désérialise le JSON body sans les guillemets
-        when(taskService.updateStatus(eq(100), any())).thenReturn(task);
+        when(taskService.updateStatus(eq(100), any(), eq(1L))).thenReturn(task);
         when(projectMemberRepository.findById(1L)).thenReturn(Optional.of(member));
 
         mockMvc.perform(patch("/api/tasks/100/status")
@@ -203,7 +203,7 @@ class TaskControllerTest {
     @Test
     @DisplayName("PATCH /{id}/status - 404 : tâche introuvable")
     void updateStatus_taskNotFound_returns404() throws Exception {
-        when(taskService.updateStatus(eq(999), any()))
+        when(taskService.updateStatus(eq(999), any(), eq(1L)))
                 .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Tâche non trouvée"));
 
         mockMvc.perform(patch("/api/tasks/999/status")
@@ -218,21 +218,49 @@ class TaskControllerTest {
     // ---------------------------------------------------------------
 
     @Test
-    @DisplayName("PATCH /{id}/assign - 200 : tâche assignée avec succès")
+    @DisplayName("PATCH /{id}/assign - 200 : tâche assignée, historique et notification déclenchés")
     void assignTask_returns200() throws Exception {
         task.setAssignedMember(member);
         AssignTaskRequest request = new AssignTaskRequest();
         request.setProjectId(10);
         request.setMemberId(2);
 
-        when(taskService.assignTaskToMember(100, 10, 2)).thenReturn(task);
+        when(taskService.assignTaskToMember(100, 10, 2, 1L)).thenReturn(task);
+        when(projectMemberRepository.findById(1L)).thenReturn(Optional.of(member));
+        doNothing().when(taskHistoryService).logAction(any(), any(), any());
+        doNothing().when(notificationService).sendTaskUpdateEmail(any(), any(), any(), any());
 
         mockMvc.perform(patch("/api/tasks/100/assign")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(request))
+                        .header("X-Member-ID", 1L))
                 .andExpect(status().isOk());
 
-        verify(taskService).assignTaskToMember(100, 10, 2);
+        verify(taskService).assignTaskToMember(100, 10, 2, 1L);
+        // L'US impose une notification et une trace d'historique à l'assignation
+        verify(taskHistoryService).logAction(eq(task), eq(member), contains("Assignation"));
+        verify(notificationService).sendTaskUpdateEmail(
+                eq("admin@example.com"), eq("Tâche test"), any(), eq("admin_user"));
+    }
+
+    @Test
+    @DisplayName("PATCH /{id}/assign - 200 : pas de notification si la tâche n'a aucun assigné")
+    void assignTask_noAssignedMember_noNotification() throws Exception {
+        task.setAssignedMember(null);
+        AssignTaskRequest request = new AssignTaskRequest();
+        request.setProjectId(10);
+        request.setMemberId(2);
+
+        when(taskService.assignTaskToMember(100, 10, 2, 1L)).thenReturn(task);
+        when(projectMemberRepository.findById(1L)).thenReturn(Optional.of(member));
+
+        mockMvc.perform(patch("/api/tasks/100/assign")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .header("X-Member-ID", 1L))
+                .andExpect(status().isOk());
+
+        verify(notificationService, never()).sendTaskUpdateEmail(any(), any(), any(), any());
     }
 
     @Test
@@ -242,13 +270,33 @@ class TaskControllerTest {
         request.setProjectId(10);
         request.setMemberId(99);
 
-        when(taskService.assignTaskToMember(100, 10, 99))
+        when(taskService.assignTaskToMember(100, 10, 99, 1L))
                 .thenThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ce membre n'appartient pas à ce projet"));
 
         mockMvc.perform(patch("/api/tasks/100/assign")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(request))
+                        .header("X-Member-ID", 1L))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("PATCH /{id}/assign - 403 : un observateur ne peut pas assigner")
+    void assignTask_byGuest_returns403() throws Exception {
+        AssignTaskRequest request = new AssignTaskRequest();
+        request.setProjectId(10);
+        request.setMemberId(2);
+
+        when(taskService.assignTaskToMember(100, 10, 2, 3L))
+                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Action refusée : un observateur ne peut pas assigner une tâche"));
+
+        mockMvc.perform(patch("/api/tasks/100/assign")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .header("X-Member-ID", 3L))
+                .andExpect(status().isForbidden());
+
+        verify(taskHistoryService, never()).logAction(any(), any(), any());
     }
 
     // ---------------------------------------------------------------
@@ -258,7 +306,7 @@ class TaskControllerTest {
     @Test
     @DisplayName("PUT /{id} - 200 : tâche mise à jour, historique enregistré")
     void updateTask_returns200_withHistory() throws Exception {
-        when(taskService.updateTask(eq(100), any(Task.class))).thenReturn(task);
+        when(taskService.updateTask(eq(100), any(Task.class), eq(1L))).thenReturn(task);
         when(projectMemberRepository.findById(1L)).thenReturn(Optional.of(member));
         doNothing().when(taskHistoryService).logAction(any(), any(), any());
 
@@ -275,7 +323,7 @@ class TaskControllerTest {
     @Test
     @DisplayName("PUT /{id} - 404 : tâche introuvable")
     void updateTask_notFound_returns404() throws Exception {
-        when(taskService.updateTask(eq(999), any(Task.class)))
+        when(taskService.updateTask(eq(999), any(Task.class), eq(1L)))
                 .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Tâche non trouvée"));
 
         mockMvc.perform(put("/api/tasks/999")

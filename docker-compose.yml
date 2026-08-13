@@ -1,0 +1,66 @@
+# =============================================================================
+#  PMT - Project Management Tool : stack complète (base, API, interface)
+#
+#  Démarrage :  docker compose up -d
+#  Arrêt     :  docker compose down          (ajouter -v pour purger la base)
+#
+#  Les images backend/frontend sont celles publiées sur Docker Hub par la
+#  pipeline GitHub Actions. Les identifiants SMTP se déclarent dans un
+#  fichier .env placé à côté de ce fichier (voir .env.example).
+# =============================================================================
+
+services:
+  db:
+    image: postgres:15
+    container_name: pmt-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pmt_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pmtpassword
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Joué une seule fois, au tout premier démarrage du volume
+      - ./init-db:/docker-entrypoint-initdb.d
+    # Indispensable : le backend attend `condition: service_healthy`
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pmt_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    image: mike230/pmt-backend:latest
+    container_name: pmt-api
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/pmt_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=pmtpassword
+      # Le script init-db crée déjà le schéma ; `update` ne fait que compléter
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      # Notifications e-mail : valeurs lues dans le fichier .env
+      - SPRING_MAIL_HOST=${MAIL_HOST:-sandbox.smtp.mailtrap.io}
+      - SPRING_MAIL_PORT=${MAIL_PORT:-2525}
+      - SPRING_MAIL_USERNAME=${MAIL_USERNAME:-}
+      - SPRING_MAIL_PASSWORD=${MAIL_PASSWORD:-}
+
+  frontend:
+    image: mike230/pmt-frontend:latest
+    container_name: pmt-ui
+    restart: unless-stopped
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

@@ -51,7 +51,7 @@ class ProjectMemberServiceTest {
         adminRole.setLibelle("ADMIN");
 
         memberRole = new Role();
-        memberRole.setLibelle("MEMBRE");
+        memberRole.setLibelle("MEMBER");
 
         adminMember = new ProjectMember();
         adminMember.setId(1);
@@ -189,12 +189,14 @@ class ProjectMemberServiceTest {
     // ---------------------------------------------------------------
 
     @Test
-    @DisplayName("updateMemberRole() - succès : rôle mis à jour")
+    @DisplayName("updateMemberRole() - succès : rôle mis à jour par un ADMIN")
     void updateMemberRole_success() {
+        when(projectMemberRepository.findById(1L)).thenReturn(Optional.of(adminMember));
         when(projectMemberRepository.findById(2L)).thenReturn(Optional.of(regularMember));
+        when(roleRepository.findByLibelle("ADMIN")).thenReturn(Optional.of(adminRole));
         when(projectMemberRepository.save(any(ProjectMember.class))).thenReturn(regularMember);
 
-        ProjectMember result = projectMemberService.updateMemberRole(2L, adminRole);
+        ProjectMember result = projectMemberService.updateMemberRole(2L, adminRole, 1L);
 
         assertThat(result).isNotNull();
         verify(projectMemberRepository).save(regularMember);
@@ -203,10 +205,37 @@ class ProjectMemberServiceTest {
     @Test
     @DisplayName("updateMemberRole() - échec : membre introuvable")
     void updateMemberRole_notFound_throwsNotFound() {
+        when(projectMemberRepository.findById(1L)).thenReturn(Optional.of(adminMember));
         when(projectMemberRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> projectMemberService.updateMemberRole(99L, adminRole))
+        assertThatThrownBy(() -> projectMemberService.updateMemberRole(99L, adminRole, 1L))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Membre introuvable");
+    }
+
+    @Test
+    @DisplayName("updateMemberRole() - échec : le demandeur n'est pas ADMIN")
+    void updateMemberRole_notAdmin_throwsForbidden() {
+        when(projectMemberRepository.findById(2L)).thenReturn(Optional.of(regularMember));
+
+        assertThatThrownBy(() -> projectMemberService.updateMemberRole(2L, adminRole, 2L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Seul l'administrateur peut modifier le rôle d'un membre");
+        verify(projectMemberRepository, never()).save(any(ProjectMember.class));
+    }
+
+    @Test
+    @DisplayName("updateMemberRole() - échec : rôle demandé inexistant")
+    void updateMemberRole_unknownRole_throwsNotFound() {
+        Role unknown = new Role();
+        unknown.setLibelle("SUPERVISEUR");
+
+        when(projectMemberRepository.findById(1L)).thenReturn(Optional.of(adminMember));
+        when(projectMemberRepository.findById(2L)).thenReturn(Optional.of(regularMember));
+        when(roleRepository.findByLibelle("SUPERVISEUR")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> projectMemberService.updateMemberRole(2L, unknown, 1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("inexistant");
     }
 }

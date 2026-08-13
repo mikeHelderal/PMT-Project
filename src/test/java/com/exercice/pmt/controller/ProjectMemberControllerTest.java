@@ -159,26 +159,42 @@ class ProjectMemberControllerTest {
     @Test
     @DisplayName("PUT /{id} - 200 : rôle mis à jour")
     void updateRole_returns200() throws Exception {
-        when(memberService.updateMemberRole(eq(5L), any(Role.class))).thenReturn(projectMember);
+        when(memberService.updateMemberRole(eq(5L), any(Role.class), eq(1L))).thenReturn(projectMember);
 
         mockMvc.perform(put("/api/members/5")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(memberRole)))
+                        .content(objectMapper.writeValueAsString(memberRole))
+                        .header("X-Member-ID", 1L))
                 .andExpect(status().isOk());
 
-        verify(memberService).updateMemberRole(eq(5L), any(Role.class));
+        verify(memberService).updateMemberRole(eq(5L), any(Role.class), eq(1L));
     }
 
     @Test
     @DisplayName("PUT /{id} - 404 : membre introuvable")
     void updateRole_notFound_returns404() throws Exception {
-        when(memberService.updateMemberRole(eq(99L), any(Role.class)))
+        when(memberService.updateMemberRole(eq(99L), any(Role.class), eq(1L)))
                 .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Membre introuvable"));
 
         mockMvc.perform(put("/api/members/99")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(memberRole)))
+                        .content(objectMapper.writeValueAsString(memberRole))
+                        .header("X-Member-ID", 1L))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("PUT /{id} - 403 : seul l'administrateur peut changer un rôle")
+    void updateRole_notAdmin_returns403() throws Exception {
+        when(memberService.updateMemberRole(eq(5L), any(Role.class), eq(2L)))
+                .thenThrow(new ResponseStatusException(
+                        HttpStatus.FORBIDDEN, "Seul l'administrateur peut modifier le rôle d'un membre"));
+
+        mockMvc.perform(put("/api/members/5")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(memberRole))
+                        .header("X-Member-ID", 2L))
+                .andExpect(status().isForbidden());
     }
 
     // ---------------------------------------------------------------

@@ -34,8 +34,10 @@ class TaskServiceTest {
     private Project project;
     private Role adminRole;
     private Role memberRole;
+    private Role guestRole;
     private ProjectMember adminMember;
     private ProjectMember regularMember;
+    private ProjectMember guestMember;
     private Task task;
 
     @BeforeEach
@@ -47,7 +49,10 @@ class TaskServiceTest {
         adminRole.setLibelle("ADMIN");
 
         memberRole = new Role();
-        memberRole.setLibelle("MEMBRE");
+        memberRole.setLibelle("MEMBER");
+
+        guestRole = new Role();
+        guestRole.setLibelle("GUEST");
 
         adminMember = new ProjectMember();
         adminMember.setId(1);
@@ -58,6 +63,11 @@ class TaskServiceTest {
         regularMember.setId(2);
         regularMember.setRole(memberRole);
         regularMember.setProject(project);
+
+        guestMember = new ProjectMember();
+        guestMember.setId(3);
+        guestMember.setRole(guestRole);
+        guestMember.setProject(project);
 
         task = new Task();
         task.setId(100);
@@ -99,13 +109,26 @@ class TaskServiceTest {
     }
 
     @Test
-    @DisplayName("createTask() - échec : le demandeur n'est pas ADMIN")
-    void createTask_notAdmin_throwsForbidden() {
+    @DisplayName("createTask() - succès : un MEMBER peut aussi créer une tâche")
+    void createTask_success_byMember() {
         when(projectMemberRepository.findById(2L)).thenReturn(Optional.of(regularMember));
+        when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
+        when(taskRepository.save(any(Task.class))).thenReturn(task);
 
-        assertThatThrownBy(() -> taskService.createTask(task, 2L))
+        Task result = taskService.createTask(task, 2L);
+
+        assertThat(result).isNotNull();
+        verify(taskRepository).save(task);
+    }
+
+    @Test
+    @DisplayName("createTask() - échec : un GUEST (observateur) ne peut pas créer de tâche")
+    void createTask_byGuest_throwsForbidden() {
+        when(projectMemberRepository.findById(3L)).thenReturn(Optional.of(guestMember));
+
+        assertThatThrownBy(() -> taskService.createTask(task, 3L))
                 .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Seul l'administrateur peut créer des tâches");
+                .hasMessageContaining("un observateur ne peut pas créer des tâches");
     }
 
     @Test
@@ -162,10 +185,11 @@ class TaskServiceTest {
     @Test
     @DisplayName("updateStatus() - succès : statut mis à jour")
     void updateStatus_success() {
+        when(projectMemberRepository.findById(1L)).thenReturn(Optional.of(adminMember));
         when(taskRepository.findById(100)).thenReturn(Optional.of(task));
         when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Task result = taskService.updateStatus(100, "EN_COURS");
+        Task result = taskService.updateStatus(100, "EN_COURS", 1L);
 
         assertThat(result.getStatus()).isEqualTo("EN_COURS");
         assertThat(result.getDateFinReelle()).isNull();
@@ -174,10 +198,11 @@ class TaskServiceTest {
     @Test
     @DisplayName("updateStatus() - statut TERMINE : dateFinReelle est renseignée")
     void updateStatus_termine_setsDateFinReelle() {
+        when(projectMemberRepository.findById(1L)).thenReturn(Optional.of(adminMember));
         when(taskRepository.findById(100)).thenReturn(Optional.of(task));
         when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Task result = taskService.updateStatus(100, "TERMINE");
+        Task result = taskService.updateStatus(100, "TERMINE", 1L);
 
         assertThat(result.getDateFinReelle()).isEqualTo(LocalDate.now());
     }
@@ -186,10 +211,11 @@ class TaskServiceTest {
     @DisplayName("updateStatus() - statut non TERMINE : dateFinReelle est remise à null")
     void updateStatus_notTermine_clearsDateFinReelle() {
         task.setDateFinReelle(LocalDate.now());
+        when(projectMemberRepository.findById(1L)).thenReturn(Optional.of(adminMember));
         when(taskRepository.findById(100)).thenReturn(Optional.of(task));
         when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Task result = taskService.updateStatus(100, "EN_COURS");
+        Task result = taskService.updateStatus(100, "EN_COURS", 1L);
 
         assertThat(result.getDateFinReelle()).isNull();
     }
@@ -197,11 +223,23 @@ class TaskServiceTest {
     @Test
     @DisplayName("updateStatus() - échec : tâche introuvable")
     void updateStatus_notFound_throwsResponseStatusException() {
+        when(projectMemberRepository.findById(1L)).thenReturn(Optional.of(adminMember));
         when(taskRepository.findById(999)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> taskService.updateStatus(999, "EN_COURS"))
+        assertThatThrownBy(() -> taskService.updateStatus(999, "EN_COURS", 1L))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Tâche non trouvée");
+    }
+
+    @Test
+    @DisplayName("updateStatus() - échec : un GUEST (observateur) ne peut pas modifier le statut")
+    void updateStatus_byGuest_throwsForbidden() {
+        when(projectMemberRepository.findById(3L)).thenReturn(Optional.of(guestMember));
+
+        assertThatThrownBy(() -> taskService.updateStatus(100, "EN_COURS", 3L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("un observateur ne peut pas");
+        verify(taskRepository, never()).save(any(Task.class));
     }
 
     // ---------------------------------------------------------------
@@ -215,10 +253,11 @@ class TaskServiceTest {
         updatedDetails.setNom("Nouveau nom");
         updatedDetails.setDescription("Nouvelle description");
 
+        when(projectMemberRepository.findById(1L)).thenReturn(Optional.of(adminMember));
         when(taskRepository.findById(100)).thenReturn(Optional.of(task));
         when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Task result = taskService.updateTask(100, updatedDetails);
+        Task result = taskService.updateTask(100, updatedDetails, 1L);
 
         assertThat(result.getNom()).isEqualTo("Nouveau nom");
         assertThat(result.getDescription()).isEqualTo("Nouvelle description");
@@ -230,10 +269,11 @@ class TaskServiceTest {
         Task updatedDetails = new Task();
         updatedDetails.setStatus("TERMINE");
 
+        when(projectMemberRepository.findById(1L)).thenReturn(Optional.of(adminMember));
         when(taskRepository.findById(100)).thenReturn(Optional.of(task));
         when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Task result = taskService.updateTask(100, updatedDetails);
+        Task result = taskService.updateTask(100, updatedDetails, 1L);
 
         assertThat(result.getDateFinReelle()).isEqualTo(LocalDate.now());
     }
@@ -241,11 +281,23 @@ class TaskServiceTest {
     @Test
     @DisplayName("updateTask() - échec : tâche introuvable")
     void updateTask_notFound_throwsResponseStatusException() {
+        when(projectMemberRepository.findById(1L)).thenReturn(Optional.of(adminMember));
         when(taskRepository.findById(999)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> taskService.updateTask(999, new Task()))
+        assertThatThrownBy(() -> taskService.updateTask(999, new Task(), 1L))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Tâche non trouvée");
+    }
+
+    @Test
+    @DisplayName("updateTask() - échec : un GUEST (observateur) ne peut pas mettre à jour")
+    void updateTask_byGuest_throwsForbidden() {
+        when(projectMemberRepository.findById(3L)).thenReturn(Optional.of(guestMember));
+
+        assertThatThrownBy(() -> taskService.updateTask(100, new Task(), 3L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("un observateur ne peut pas");
+        verify(taskRepository, never()).save(any(Task.class));
     }
 
     // ---------------------------------------------------------------
@@ -256,11 +308,12 @@ class TaskServiceTest {
     @DisplayName("assignTaskToMember() - succès : tâche assignée au membre")
     void assignTaskToMember_success() {
         regularMember.setProject(project);
+        when(projectMemberRepository.findById(1L)).thenReturn(Optional.of(adminMember));
         when(taskRepository.findById(100)).thenReturn(Optional.of(task));
         when(projectMemberRepository.findById(2L)).thenReturn(Optional.of(regularMember));
         when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Task result = taskService.assignTaskToMember(100, 10, 2);
+        Task result = taskService.assignTaskToMember(100, 10, 2, 1L);
 
         assertThat(result.getAssignedMember()).isEqualTo(regularMember);
         verify(taskRepository).save(task);
@@ -273,9 +326,10 @@ class TaskServiceTest {
         otherProject.setId(99);
         task.setProject(otherProject);
 
+        when(projectMemberRepository.findById(1L)).thenReturn(Optional.of(adminMember));
         when(taskRepository.findById(100)).thenReturn(Optional.of(task));
 
-        assertThatThrownBy(() -> taskService.assignTaskToMember(100, 10, 2))
+        assertThatThrownBy(() -> taskService.assignTaskToMember(100, 10, 2, 1L))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("n'appartient pas à ce projet");
     }
@@ -287,12 +341,24 @@ class TaskServiceTest {
         otherProject.setId(99);
         regularMember.setProject(otherProject);
 
+        when(projectMemberRepository.findById(1L)).thenReturn(Optional.of(adminMember));
         when(taskRepository.findById(100)).thenReturn(Optional.of(task));
         when(projectMemberRepository.findById(2L)).thenReturn(Optional.of(regularMember));
 
-        assertThatThrownBy(() -> taskService.assignTaskToMember(100, 10, 2))
+        assertThatThrownBy(() -> taskService.assignTaskToMember(100, 10, 2, 1L))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("n'appartient pas à ce projet");
+    }
+
+    @Test
+    @DisplayName("assignTaskToMember() - échec : un GUEST (observateur) ne peut pas assigner")
+    void assignTaskToMember_byGuest_throwsForbidden() {
+        when(projectMemberRepository.findById(3L)).thenReturn(Optional.of(guestMember));
+
+        assertThatThrownBy(() -> taskService.assignTaskToMember(100, 10, 2, 3L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("un observateur ne peut pas assigner");
+        verify(taskRepository, never()).save(any(Task.class));
     }
 
     // ---------------------------------------------------------------
