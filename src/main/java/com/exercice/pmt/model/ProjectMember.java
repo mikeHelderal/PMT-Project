@@ -20,7 +20,7 @@ public class ProjectMember {
 
     @ManyToOne
     @JoinColumn(name = "projet_id", nullable = false)
-    @JsonIgnoreProperties({"task", "admin"})
+    @JsonIgnoreProperties({"task", "admin","membres"})
     private Project project;
 
     @ManyToOne
